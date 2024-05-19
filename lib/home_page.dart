@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:trator_remoto/alertas_page.dart';
 import 'package:trator_remoto/status_page.dart';
@@ -15,20 +17,63 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   String state = 'Parado';
+  int velocidade = 0;
   var teste;
+  int valor_alerta = 0;
+  bool state_alerta = false;
+
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
   Future verificar_url(String state) async {
     try {
       var result = await http.get(Uri.parse('http://192.168.1.130/$state'));
       teste = result.body;
+      valor_alerta = int.tryParse(teste)!;
       print(teste);
+      if (valor_alerta >= 3000) {
+        state_alerta = false;
+      } else {
+        setState(() {
+          state_alerta = true;
+          velocidade = 0;
+          atualizarState('Parado');
+        });
+      }
     } catch (e) {
       print(e);
+    }
+  }
+
+  Future atualizarVelocidade() async {
+    velocidade = 0;
+    if (state_alerta == false) {
+      for (int a = 0; a < 5; a++) {
+        await Future.delayed(Duration(seconds: 1));
+        setState(() {
+          velocidade += 2;
+        });
+      }
+    } else {
+      velocidade = 0;
     }
   }
 
   atualizarState(String statePass) {
     setState(() {
       state = statePass;
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      verificar_url('');
+      setState(() {});
     });
   }
 
@@ -90,8 +135,11 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         IconButton(
                             onPressed: () {
-                              verificar_url('frente');
-                              atualizarState('P/ Frente');
+                              if (state_alerta == false) {
+                                verificar_url('H1');
+                                atualizarState('P/ Frente');
+                                atualizarVelocidade();
+                              }
                             },
                             icon: Icon(
                               Icons.arrow_drop_up_outlined,
@@ -105,7 +153,9 @@ class _HomePageState extends State<HomePage> {
                               padding: const EdgeInsets.only(right: 10),
                               child: IconButton(
                                   onPressed: () {
-                                    verificar_url('alert');
+                                    if (state_alerta == false) {
+                                      verificar_url('H4');
+                                    }
                                   },
                                   icon: Icon(
                                     Icons.arrow_left_outlined,
@@ -115,8 +165,13 @@ class _HomePageState extends State<HomePage> {
                             ),
                             IconButton(
                                 onPressed: () {
-                                  verificar_url('pare');
-                                  atualizarState('Parado');
+                                  if (state_alerta == false) {
+                                    verificar_url('H3');
+                                    atualizarState('Parado');
+                                    setState(() {
+                                      velocidade = 0;
+                                    });
+                                  }
                                 },
                                 icon: Icon(
                                   Icons.stop_rounded,
@@ -137,8 +192,11 @@ class _HomePageState extends State<HomePage> {
                         ),
                         IconButton(
                             onPressed: () {
-                              verificar_url('tras');
-                              atualizarState('P/ Trás');
+                              if (state_alerta == false) {
+                                verificar_url('H2');
+                                atualizarState('P/ Trás');
+                                atualizarVelocidade();
+                              }
                             },
                             icon: Icon(
                               Icons.arrow_drop_down_outlined,
@@ -186,7 +244,7 @@ class _HomePageState extends State<HomePage> {
                                 Container(
                                   height: 50,
                                   child: Text(
-                                    '0 km/h',
+                                    '$velocidade km/h',
                                     style: TextStyle(fontSize: 30),
                                   ),
                                 ),
@@ -313,7 +371,9 @@ class _HomePageState extends State<HomePage> {
                               width: 130,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(15),
-                                color: Colors.white,
+                                color: state_alerta == false
+                                    ? Colors.white
+                                    : Colors.red,
                               ),
                               child: Column(
                                 children: [
@@ -329,7 +389,7 @@ class _HomePageState extends State<HomePage> {
                                   Container(
                                     height: 50,
                                     child: Text(
-                                      'N/A',
+                                      state_alerta == false ? 'N/A' : 'Perigo',
                                       style: TextStyle(fontSize: 30),
                                     ),
                                   ),
